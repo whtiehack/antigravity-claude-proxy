@@ -178,7 +178,12 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
         }
 
         if (!account) {
-            continue; // Shouldn't happen, but safety check
+            // Log detailed state for debugging account selection issues
+            const status = accountManager.getStatus();
+            logger.warn(`[CloudCode] No account selected (attempt ${attempt + 1}/${maxAttempts}). ` +
+                `Accounts: ${status.total} total, ${status.available} available, ` +
+                `${status.rateLimited} rate-limited, ${status.invalid} invalid`);
+            continue;
         }
 
         try {
