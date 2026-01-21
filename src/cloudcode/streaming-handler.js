@@ -449,7 +449,23 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
         }
     }
 
-    throw new Error('Max retries exceeded');
+    // Emit error event instead of throwing to ensure client receives proper SSE error
+    yield* emitMaxRetriesError(model);
+}
+
+/**
+ * Emit an error event when max retries are exceeded (all accounts exhausted)
+ * @param {string} model - The model name
+ * @yields {Object} Anthropic-format SSE error event
+ */
+function* emitMaxRetriesError(model) {
+    yield {
+        type: 'error',
+        error: {
+            type: 'api_error',
+            message: `Max retries exceeded for model ${model}. All accounts are rate-limited or unavailable. Please try again later.`
+        }
+    };
 }
 
 /**
