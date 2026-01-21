@@ -1,0 +1,61 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # UTC 00:00 (北京 08:00)
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Add and Fetch Upstream
+        run: |
+          git remote add upstream https://github.com/badri-s2001/antigravity-claude-proxy.git
+          git fetch upstream
+
+      - name: Check for Updates
+        id: check
+        run: |
+          UPSTREAM_COMMITS=$(git rev-list HEAD..upstream/main --count)
+          echo "upstream_commits=$UPSTREAM_COMMITS" >> $GITHUB_OUTPUT
+          echo "has_updates=$([[ $UPSTREAM_COMMITS -gt 0 ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Merge Upstream
+        if: steps.check.outputs.has_updates == 'true'
+        id: merge
+        run: |
+          if git merge upstream/main -m "chore: sync with upstream"; then
+            echo "merge_success=true" >> $GITHUB_OUTPUT
+          else
+            # 有冲突 - 中止合并，不自动解决
+            git merge --abort
+            echo "merge_success=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Push Changes
+        if: steps.check.outputs.has_updates == 'true' && steps.merge.outputs.merge_success == 'true'
+        run: git push origin main
+
+      - name: Create Issue on Conflict
+        if: steps.check.outputs.has_updates == 'true' && steps.merge.outputs.merge_success == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '⚠️ Upstream Sync Failed: Merge Conflict',
+              body: `Upstream sync on ${new Date().toISOString()} failed due to merge conflicts.\n\n**Action Required:** Please manually merge upstream changes and resolve conflicts.\n\n\`\`\`bash\ngit fetch upstream\ngit merge upstream/main\n# 解决冲突后\ngit push origin main\n\`\`\``,
+              labels: ['sync', 'needs-review']
+            })

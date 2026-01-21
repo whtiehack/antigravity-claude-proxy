@@ -448,47 +448,16 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
 }
 
 /**
- * Emit a fallback message when all retry attempts fail with empty response
+ * Emit an error event when all retry attempts fail with empty response
  * @param {string} model - The model name
- * @yields {Object} Anthropic-format SSE events for empty response fallback
+ * @yields {Object} Anthropic-format SSE error event
  */
 function* emitEmptyResponseFallback(model) {
-    // Use proper message ID format consistent with Anthropic API
-    const messageId = `msg_${crypto.randomBytes(16).toString('hex')}`;
-
     yield {
-        type: 'message_start',
-        message: {
-            id: messageId,
-            type: 'message',
-            role: 'assistant',
-            content: [],
-            model: model,
-            stop_reason: null,
-            stop_sequence: null,
-            usage: { input_tokens: 0, output_tokens: 0 }
+        type: 'error',
+        error: {
+            type: 'api_error',
+            message: `No response received after ${MAX_EMPTY_RESPONSE_RETRIES} retries for model ${model}. Please try again.`
         }
     };
-
-    yield {
-        type: 'content_block_start',
-        index: 0,
-        content_block: { type: 'text', text: '' }
-    };
-
-    yield {
-        type: 'content_block_delta',
-        index: 0,
-        delta: { type: 'text_delta', text: '[No response after retries - please try again]' }
-    };
-
-    yield { type: 'content_block_stop', index: 0 };
-
-    yield {
-        type: 'message_delta',
-        delta: { stop_reason: 'end_turn', stop_sequence: null },
-        usage: { output_tokens: 0 }
-    };
-
-    yield { type: 'message_stop' };
 }
