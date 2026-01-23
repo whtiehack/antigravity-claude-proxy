@@ -335,9 +335,14 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
 
         } catch (error) {
             if (isRateLimitError(error)) {
-                // Rate limited - already marked, notify strategy and continue to next account
-                accountManager.notifyRateLimit(account, model);
-                logger.info(`[CloudCode] Account ${account.email} rate-limited, trying next...`);
+                // Capacity exhausted is a server-side issue, don't penalize account health
+                if (isModelCapacityExhausted(error.message)) {
+                    logger.info(`[CloudCode] Capacity exhausted (server-side), trying next account (no health penalty)...`);
+                } else {
+                    // Rate limited - already marked, notify strategy and continue to next account
+                    accountManager.notifyRateLimit(account, model);
+                    logger.info(`[CloudCode] Account ${account.email} rate-limited, trying next...`);
+                }
                 continue;
             }
             if (isAuthError(error)) {
