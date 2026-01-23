@@ -207,6 +207,17 @@ export class AccountManager {
     }
 
     /**
+     * Notify the strategy of a capacity exhaustion (server-side)
+     * @param {Object} account - The account that encountered capacity exhaustion
+     * @param {string} modelId - The model ID that was exhausted
+     */
+    notifyCapacityExhausted(account, modelId) {
+        if (this.#strategy) {
+            this.#strategy.onCapacityExhausted?.(account, modelId);
+        }
+    }
+
+    /**
      * Get the current strategy name
      * @returns {string} Strategy name
      */

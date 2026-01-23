@@ -127,6 +127,16 @@ export class HybridStrategy extends BaseStrategy {
     }
 
     /**
+     * Called when model capacity is exhausted (server-side issue)
+     * Applies light penalty since this is not the account's fault
+     */
+    onCapacityExhausted(account, modelId) {
+        if (account && account.email) {
+            this.#healthTracker.recordCapacityExhausted(account.email);
+        }
+    }
+
+    /**
      * Get candidates that pass all filters
      * @private
      */

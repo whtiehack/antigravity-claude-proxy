@@ -106,6 +106,22 @@ export class HealthTracker {
     }
 
     /**
+     * Record a capacity exhausted event for an account (light penalty)
+     * @param {string} email - Account email
+     */
+    recordCapacityExhausted(email) {
+        const record = this.#scores.get(email);
+        const currentScore = this.getScore(email);
+        const penalty = this.#config.capacityExhaustedPenalty ?? -1;
+        const newScore = Math.max(0, currentScore + penalty);
+        this.#scores.set(email, {
+            score: newScore,
+            lastUpdated: Date.now(),
+            consecutiveFailures: (record?.consecutiveFailures ?? 0) + 1
+        });
+    }
+
+    /**
      * Check if an account is usable based on health score
      * @param {string} email - Account email
      * @returns {boolean} True if account health score is above minimum threshold

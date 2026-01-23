@@ -394,9 +394,10 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
 
         } catch (error) {
             if (isRateLimitError(error)) {
-                // Capacity exhausted is a server-side issue, don't penalize account health
+                // Capacity exhausted is a server-side issue, apply light penalty
                 if (isModelCapacityExhausted(error.message)) {
-                    logger.info(`[CloudCode] Capacity exhausted (server-side), trying next account (no health penalty)...`);
+                    accountManager.notifyCapacityExhausted(account, model);
+                    logger.info(`[CloudCode] Capacity exhausted (server-side), trying next account (light penalty -2)...`);
                 } else {
                     // Rate limited - already marked, notify strategy and continue to next account
                     accountManager.notifyRateLimit(account, model);
